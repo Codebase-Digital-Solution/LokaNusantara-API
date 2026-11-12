@@ -45,3 +45,6 @@ tmp/
 
 # Uploaded images
 /uploads/
+
+# PM2 logs
+/logs/

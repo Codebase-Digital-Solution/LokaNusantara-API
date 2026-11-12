@@ -200,6 +200,7 @@ func SetupRouter(db *gorm.DB, cfg *config.Config) *gin.Engine {
 		{
 			panel.GET("/stats", adminHandler.Stats)
 			panel.POST("/uploads/location-image", uploadHandler.LocationImage)
+			panel.POST("/uploads/trail-image", uploadHandler.TrailImage)
 			panel.GET("/users", adminHandler.Users)
 			panel.GET("/settings/ai", adminSettingsHandler.GetAI)
 			panel.PUT("/settings/ai", adminSettingsHandler.UpdateAI)

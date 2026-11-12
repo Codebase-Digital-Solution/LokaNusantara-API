@@ -25,6 +25,7 @@ type TrailRequest struct {
 	Subtitle string `json:"subtitle"`
 	Story    string `json:"story"`
 	Color    string `json:"color"`
+	ImageURL string `json:"image_url"`
 	Stops    []struct {
 		LocationID string `json:"location_id" binding:"required"`
 		Note       string `json:"note"`
@@ -38,6 +39,7 @@ func (r TrailRequest) toInput() usecase.TrailInput {
 		Subtitle: r.Subtitle,
 		Story:    r.Story,
 		Color:    r.Color,
+		ImageURL: r.ImageURL,
 	}
 	for _, s := range r.Stops {
 		in.Stops = append(in.Stops, usecase.TrailStopInput{LocationID: s.LocationID, Note: s.Note})

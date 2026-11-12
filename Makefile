@@ -1,4 +1,4 @@
-.PHONY: help build run test clean docker-up docker-down deps fmt lint migrate
+.PHONY: help build run test clean docker-up docker-down deps fmt lint migrate pm2-start pm2-restart pm2-stop pm2-logs pm2-status pm2-delete
 
 help:
 	@echo "Bali Guide Map API - Makefile Commands"
@@ -13,6 +13,12 @@ help:
 	@echo "make docker-up       - Start Docker services"
 	@echo "make docker-down     - Stop Docker services"
 	@echo "make migrate         - Run database migrations"
+	@echo "make pm2-start       - Build and run the API under PM2"
+	@echo "make pm2-restart     - Rebuild and restart the API under PM2"
+	@echo "make pm2-stop        - Stop the API under PM2"
+	@echo "make pm2-logs        - Follow the API logs"
+	@echo "make pm2-status      - Show PM2 process status"
+	@echo "make pm2-delete      - Remove the API from PM2"
 
 build:
 	@echo "Building application..."
@@ -57,5 +63,29 @@ docker-down:
 migrate:
 	@echo "Running migrations..."
 	@go run cmd/main.go
+
+# --- PM2 -------------------------------------------------------------------
+# Requires PM2: npm install -g pm2
+
+pm2-start: build
+	@mkdir -p logs
+	@pm2 startOrReload ecosystem.config.js
+	@pm2 save
+
+pm2-restart: build
+	@pm2 restart baliguide-api --update-env
+
+pm2-stop:
+	@pm2 stop baliguide-api
+
+pm2-logs:
+	@pm2 logs baliguide-api
+
+pm2-status:
+	@pm2 status baliguide-api
+
+pm2-delete:
+	@pm2 delete baliguide-api
+	@pm2 save
 
 .DEFAULT_GOAL := help

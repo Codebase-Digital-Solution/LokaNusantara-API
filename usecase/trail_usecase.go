@@ -15,6 +15,7 @@ type TrailInput struct {
 	Subtitle string
 	Story    string
 	Color    string
+	ImageURL string
 	Stops    []TrailStopInput
 }
 
@@ -72,6 +73,9 @@ func (u *trailUsecase) validate(in *TrailInput) error {
 	if !slugPattern.MatchString(in.Slug) {
 		return errors.New("slug must be lowercase letters, numbers and dashes")
 	}
+	if !validImageURL(in.ImageURL) {
+		return errImageURL
+	}
 	if in.Color != "" && !colorPattern.MatchString(in.Color) {
 		return errors.New("color must be a hex value like #A87618")
 	}
@@ -92,6 +96,7 @@ func (u *trailUsecase) save(trail *entity.Trail, in TrailInput) (*entity.Trail, 
 	trail.Subtitle = in.Subtitle
 	trail.Story = in.Story
 	trail.Color = in.Color
+	trail.ImageURL = in.ImageURL
 	trail.Stops = make([]entity.TrailStop, 0, len(in.Stops))
 	for _, s := range in.Stops {
 		trail.Stops = append(trail.Stops, entity.TrailStop{LocationID: s.LocationID, Note: s.Note})

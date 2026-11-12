@@ -30,8 +30,14 @@ func NewUploadHandler(dir string) *UploadHandler {
 	return &UploadHandler{dir: dir}
 }
 
-// LocationImage accepts multipart field "file" and returns {"url": "/uploads/locations/<id>.<ext>"}.
-func (h *UploadHandler) LocationImage(c *gin.Context) {
+// LocationImage stores a location photo under /uploads/locations.
+func (h *UploadHandler) LocationImage(c *gin.Context) { h.save(c, "locations") }
+
+// TrailImage stores a Jalur Kisah cover photo under /uploads/trails.
+func (h *UploadHandler) TrailImage(c *gin.Context) { h.save(c, "trails") }
+
+// save accepts multipart field "file" and returns {"url": "/uploads/<folder>/<id>.<ext>"}.
+func (h *UploadHandler) save(c *gin.Context, folder string) {
 	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxUploadBytes+1<<10)
 	fh, err := c.FormFile("file")
 	if err != nil {
@@ -57,7 +63,7 @@ func (h *UploadHandler) LocationImage(c *gin.Context) {
 		return
 	}
 
-	sub := filepath.Join(h.dir, "locations")
+	sub := filepath.Join(h.dir, folder)
 	if err := os.MkdirAll(sub, 0o755); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "gagal menyimpan gambar"})
 		return
@@ -80,5 +86,5 @@ func (h *UploadHandler) LocationImage(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "gagal menyimpan gambar"})
 		return
 	}
-	c.JSON(http.StatusCreated, gin.H{"url": "/uploads/locations/" + name})
+	c.JSON(http.StatusCreated, gin.H{"url": "/uploads/" + folder + "/" + name})
 }
