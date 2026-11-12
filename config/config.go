@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -24,6 +25,13 @@ type Config struct {
 	AdminName        string
 	AdminEmail       string
 	AdminPassword    string
+	// GoogleClientIDs lists the OAuth client IDs whose ID tokens we accept.
+	// For the Flutter app this is the Web client ID used as serverClientId.
+	GoogleClientIDs []string
+	OpenAIAPIKey    string
+	OpenAIModel     string
+	// UploadDir is where admin-uploaded images are stored and served from.
+	UploadDir string
 }
 
 var AppConfig *Config
@@ -58,6 +66,10 @@ func LoadConfig() (*Config, error) {
 		AdminName:        os.Getenv("ADMIN_NAME"),
 		AdminEmail:       os.Getenv("ADMIN_EMAIL"),
 		AdminPassword:    os.Getenv("ADMIN_PASSWORD"),
+		GoogleClientIDs:  splitList(os.Getenv("GOOGLE_CLIENT_IDS")),
+		OpenAIAPIKey:     os.Getenv("OPENAI_API_KEY"),
+		OpenAIModel:      os.Getenv("OPENAI_MODEL"),
+		UploadDir:        os.Getenv("UPLOAD_DIR"),
 	}
 
 	// Validate required config
@@ -73,6 +85,12 @@ func LoadConfig() (*Config, error) {
 	if config.JWTSecret == "" {
 		config.JWTSecret = "default-secret-key" // CHANGE IN PRODUCTION
 	}
+	if config.UploadDir == "" {
+		config.UploadDir = "uploads"
+	}
+	if config.OpenAIModel == "" {
+		config.OpenAIModel = "gpt-4o-mini"
+	}
 	if config.AdminName == "" {
 		config.AdminName = "Administrator"
 	}
@@ -82,6 +100,16 @@ func LoadConfig() (*Config, error) {
 
 	AppConfig = config
 	return config, nil
+}
+
+func splitList(v string) []string {
+	var out []string
+	for _, part := range strings.Split(v, ",") {
+		if p := strings.TrimSpace(part); p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
 }
 
 func GetDSN(cfg *Config) string {

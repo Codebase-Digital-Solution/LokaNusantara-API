@@ -13,6 +13,8 @@ type CategoryUsecase interface {
 	UpdateCategory(id uint, name string) (*entity.Category, error)
 	DeleteCategory(id uint) error
 	GetAllCategories(limit, offset int) ([]entity.Category, error)
+	// ReorderCategories saves a new order; ids must list every category once.
+	ReorderCategories(ids []uint) error
 }
 
 type categoryUsecase struct {
@@ -36,8 +38,13 @@ func (u *categoryUsecase) CreateCategory(name string) (*entity.Category, error) 
 		return nil, errors.New("category already exists")
 	}
 
+	position, err := u.categoryRepo.NextPosition()
+	if err != nil {
+		return nil, errors.New("failed to create category")
+	}
 	category := &entity.Category{
-		Name: name,
+		Name:     name,
+		Position: position,
 	}
 
 	if err := u.categoryRepo.Create(category); err != nil {
@@ -89,4 +96,26 @@ func (u *categoryUsecase) GetAllCategories(limit, offset int) ([]entity.Category
 		offset = 0
 	}
 	return u.categoryRepo.GetAll(limit, offset)
+}
+
+func (u *categoryUsecase) ReorderCategories(ids []uint) error {
+	all, err := u.categoryRepo.GetAll(1000, 0)
+	if err != nil {
+		return err
+	}
+	if len(ids) != len(all) {
+		return errors.New("urutan harus berisi semua kategori")
+	}
+	known := make(map[uint]bool, len(all))
+	for _, c := range all {
+		known[c.ID] = true
+	}
+	seen := make(map[uint]bool, len(ids))
+	for _, id := range ids {
+		if !known[id] || seen[id] {
+			return errors.New("urutan kategori tidak valid")
+		}
+		seen[id] = true
+	}
+	return u.categoryRepo.Reorder(ids)
 }

@@ -42,3 +42,6 @@ go.work
 
 # Air - Live reload
 tmp/
+
+# Uploaded images
+/uploads/

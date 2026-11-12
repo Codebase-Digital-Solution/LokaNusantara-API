@@ -28,8 +28,12 @@ func NewLocationRepository(db *gorm.DB) LocationRepository {
 	return &locationRepository{db: db}
 }
 
+// listOrder follows the category order set by the admin (traditions first),
+// then name, so lists are stable and consistent with the category chips.
+const listOrder = "categories.position ASC, locations.name ASC"
+
 // listSelect: skip description (longtext) untuk list view — hemat bandwidth & query time
-const listSelect = "locations.id, locations.name, locations.latitude, locations.longitude, locations.address, locations.category_id, locations.created_at, locations.updated_at"
+const listSelect = "locations.id, locations.name, locations.latitude, locations.longitude, locations.address, locations.image_url, locations.category_id, locations.created_at, locations.updated_at"
 
 func (r *locationRepository) Create(location *entity.Location) error {
 	return r.db.Create(location).Error
@@ -59,6 +63,7 @@ func (r *locationRepository) GetAll(limit, offset int) ([]entity.Location, error
 		Select(listSelect).
 		Joins("JOIN categories ON categories.id = locations.category_id").
 		Preload("Category").
+		Order(listOrder).
 		Limit(limit).Offset(offset).
 		Find(&locations).Error
 	return locations, err
@@ -72,6 +77,7 @@ func (r *locationRepository) GetByCategory(categoryID uint, limit, offset int) (
 		Joins("JOIN categories ON categories.id = locations.category_id").
 		Preload("Category").
 		Where("locations.category_id = ?", categoryID).
+		Order(listOrder).
 		Limit(limit).Offset(offset).
 		Find(&locations).Error
 	return locations, err
@@ -86,6 +92,7 @@ func (r *locationRepository) Search(keyword string, limit, offset int) ([]entity
 		Joins("JOIN categories ON categories.id = locations.category_id").
 		Preload("Category").
 		Where("locations.name LIKE ? OR locations.address LIKE ?", like, like).
+		Order(listOrder).
 		Limit(limit).Offset(offset).
 		Find(&locations).Error
 	return locations, err
@@ -110,6 +117,7 @@ func (r *locationRepository) GetNearby(latitude, longitude, radius float64) ([]e
 				"(6371 * acos(cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) + sin(radians(?)) * sin(radians(latitude)))) <= ?",
 				latitude, longitude, latitude, radius,
 			).
+			Order(listOrder).
 			Find(&locations).Error
 	}()
 

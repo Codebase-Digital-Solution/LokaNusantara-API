@@ -34,3 +34,22 @@ func TestBuildMessagesAlternatesAndEndsWithQuestion(t *testing.T) {
 		t.Errorf("roles do not alternate user/assistant/user")
 	}
 }
+
+func TestTrimHistoryKeepsAlternatingTurns(t *testing.T) {
+	got := trimHistory([]AssistantMessage{
+		{Role: "assistant", Content: "sapaan"},
+		{Role: "user", Content: "  Apa itu Galungan?  "},
+		{Role: "assistant", Content: "Hari kemenangan dharma."},
+		{Role: "user", Content: "menggantung"},
+	})
+	if len(got) != 2 || got[0].Role != "user" || got[0].Content != "Apa itu Galungan?" || got[1].Role != "assistant" {
+		t.Fatalf("trimHistory = %+v", got)
+	}
+}
+
+func TestAskDisabledWithoutAnyKey(t *testing.T) {
+	u := NewAssistantUsecase(nil, nil, NewAISettingsUsecase(nil, "", ""))
+	if _, err := u.Ask(t.Context(), "Halo", nil); err != ErrAssistantDisabled {
+		t.Fatalf("want ErrAssistantDisabled, got %v", err)
+	}
+}

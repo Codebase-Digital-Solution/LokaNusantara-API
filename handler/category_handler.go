@@ -95,6 +95,24 @@ func (h *CategoryHandler) Delete(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "category deleted successfully"})
 }
 
+type CategoryOrderRequest struct {
+	IDs []uint `json:"ids" binding:"required,min=1"`
+}
+
+// Reorder saves the display order of all categories (admin only).
+func (h *CategoryHandler) Reorder(c *gin.Context) {
+	var req CategoryOrderRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "urutan kategori tidak valid"})
+		return
+	}
+	if err := h.categoryUsecase.ReorderCategories(req.IDs); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "urutan disimpan"})
+}
+
 func (h *CategoryHandler) GetAll(c *gin.Context) {
 	limit := c.DefaultQuery("limit", "10")
 	offset := c.DefaultQuery("offset", "0")

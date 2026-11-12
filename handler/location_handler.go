@@ -17,6 +17,7 @@ type LocationRequest struct {
 	Name        string  `json:"name" binding:"required"`
 	Description string  `json:"description"`
 	History     string  `json:"history"`
+	ImageURL    string  `json:"image_url"`
 	Address     string  `json:"address"`
 	Latitude    float64 `json:"latitude" binding:"required"`
 	Longitude   float64 `json:"longitude" binding:"required"`
@@ -36,7 +37,7 @@ func (h *LocationHandler) Create(c *gin.Context) {
 		return
 	}
 
-	location, err := h.locationUsecase.CreateLocation(req.Name, req.Description, req.History, req.Address, req.Latitude, req.Longitude, req.CategoryID)
+	location, err := h.locationUsecase.CreateLocation(req.Name, req.Description, req.History, req.ImageURL, req.Address, req.Latitude, req.Longitude, req.CategoryID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -66,7 +67,7 @@ func (h *LocationHandler) Update(c *gin.Context) {
 		return
 	}
 
-	location, err := h.locationUsecase.UpdateLocation(id, req.Name, req.Description, req.History, req.Address, req.Latitude, req.Longitude, req.CategoryID)
+	location, err := h.locationUsecase.UpdateLocation(id, req.Name, req.Description, req.History, req.ImageURL, req.Address, req.Latitude, req.Longitude, req.CategoryID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

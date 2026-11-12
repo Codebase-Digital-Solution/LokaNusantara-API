@@ -11,6 +11,7 @@ type UserRepository interface {
 	Create(user *entity.User) error
 	GetByID(id string) (*entity.User, error)
 	GetByEmail(email string) (*entity.User, error)
+	GetByGoogleID(googleID string) (*entity.User, error)
 	Update(user *entity.User) error
 	Delete(id string) error
 	GetAll(limit, offset int) ([]entity.User, error)
@@ -43,6 +44,18 @@ func (r *userRepository) GetByID(id string) (*entity.User, error) {
 func (r *userRepository) GetByEmail(email string) (*entity.User, error) {
 	var user entity.User
 	err := r.db.First(&user, "email = ?", email).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, errors.New("user not found")
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
+func (r *userRepository) GetByGoogleID(googleID string) (*entity.User, error) {
+	var user entity.User
+	err := r.db.First(&user, "google_id = ?", googleID).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, errors.New("user not found")
 	}

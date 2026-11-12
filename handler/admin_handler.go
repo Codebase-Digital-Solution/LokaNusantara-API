@@ -46,12 +46,15 @@ func (h *AdminHandler) Stats(c *gin.Context) {
 
 // AdminUser is one registered account as shown in the admin user list.
 type AdminUser struct {
-	ID          string    `json:"id"`
-	Name        string    `json:"name"`
-	Email       string    `json:"email"`
-	Role        string    `json:"role"`
-	ReviewCount int64     `json:"review_count"`
-	CreatedAt   time.Time `json:"created_at"`
+	ID            string    `json:"id"`
+	Name          string    `json:"name"`
+	Email         string    `json:"email"`
+	Role          string    `json:"role"`
+	AvatarURL     string    `json:"avatar_url"`
+	LoginMethod   string    `json:"login_method"` // "google" or "email"
+	ReviewCount   int64     `json:"review_count"`
+	BookmarkCount int64     `json:"bookmark_count"`
+	CreatedAt     time.Time `json:"created_at"`
 }
 
 // Users lists every registered account, newest first, with how many reviews
@@ -59,9 +62,10 @@ type AdminUser struct {
 func (h *AdminHandler) Users(c *gin.Context) {
 	var users []AdminUser
 	err := h.db.Model(&entity.User{}).
-		Select("users.id, users.name, users.email, users.role, users.created_at, COUNT(reviews.id) AS review_count").
-		Joins("LEFT JOIN reviews ON reviews.user_id = users.id").
-		Group("users.id, users.name, users.email, users.role, users.created_at").
+		Select(`users.id, users.name, users.email, users.role, users.created_at, users.avatar_url,
+			CASE WHEN users.google_id IS NULL THEN 'email' ELSE 'google' END AS login_method,
+			(SELECT COUNT(*) FROM reviews WHERE reviews.user_id = users.id) AS review_count,
+			(SELECT COUNT(*) FROM bookmarks WHERE bookmarks.user_id = users.id) AS bookmark_count`).
 		Order("users.created_at DESC").
 		Scan(&users).Error
 	if err != nil {

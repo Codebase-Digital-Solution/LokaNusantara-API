@@ -16,7 +16,8 @@ import (
 	"gorm.io/gorm"
 )
 
-// ErrAssistantDisabled is returned when no ANTHROPIC_API_KEY is configured.
+// ErrAssistantDisabled is returned when neither ANTHROPIC_API_KEY nor
+// OPENAI_API_KEY is configured.
 var ErrAssistantDisabled = errors.New("Tanya Loka belum dikonfigurasi di server")
 
 const (
@@ -46,6 +47,7 @@ type AssistantUsecase interface {
 type assistantUsecase struct {
 	db     *gorm.DB
 	client *anthropic.Client
+	openai *openAIClient
 
 	mu        sync.Mutex
 	knowledge string
@@ -54,10 +56,13 @@ type assistantUsecase struct {
 }
 
 // NewAssistantUsecase returns a usecase that answers only from the
-// LokaNusantara database. A nil client disables it.
-func NewAssistantUsecase(db *gorm.DB, client *anthropic.Client) AssistantUsecase {
-	return &assistantUsecase{db: db, client: client}
+// LokaNusantara database. It uses Claude when client is set, otherwise
+// OpenAI with the admin AI settings; with neither it is disabled.
+func NewAssistantUsecase(db *gorm.DB, client *anthropic.Client, settings AISettingsSource) AssistantUsecase {
+	return &assistantUsecase{db: db, client: client, openai: newOpenAIClient(settings)}
 }
+
+const refusalAnswer = "Maaf, Tanya Loka tidak bisa menjawab pertanyaan itu. Coba tanyakan tentang tradisi, rumah ibadah, kuliner, atau agenda budaya."
 
 const assistantInstructions = `Kamu adalah Tanya Loka, pemandu budaya di aplikasi LokaNusantara yang membantu orang mengenal tradisi, rumah ibadah, kuliner, dan agenda budaya di Bali.
 
@@ -165,15 +170,19 @@ func (u *assistantUsecase) refresh() (string, map[string]entity.Location, error)
 var locationMarker = regexp.MustCompile(`\s*\[\[([0-9a-fA-F-]{36})\]\]`)
 
 func (u *assistantUsecase) Ask(ctx context.Context, question string, history []AssistantMessage) (*AssistantAnswer, error) {
-	if u.client == nil {
+	if u.client == nil && !u.openai.enabled() {
 		return nil, ErrAssistantDisabled
 	}
 	question = strings.TrimSpace(question)
 	if question == "" {
 		return nil, errors.New("pertanyaan tidak boleh kosong")
 	}
-	if len([]rune(question)) > 500 {
-		return nil, errors.New("pertanyaan maksimal 500 karakter")
+	maxChars := DefaultMaxInputChars
+	if u.openai.enabled() {
+		maxChars = u.openai.settings.Current().MaxInputChars
+	}
+	if len([]rune(question)) > maxChars {
+		return nil, fmt.Errorf("pertanyaan maksimal %d karakter", maxChars)
 	}
 
 	knowledge, places, err := u.refresh()
@@ -184,6 +193,10 @@ func (u *assistantUsecase) Ask(ctx context.Context, question string, history []A
 	weekday := []string{"Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"}
 	now := time.Now()
 	dateNote := fmt.Sprintf("Tanggal hari ini: %s, %s.", weekday[now.Weekday()], now.Format("2006-01-02"))
+
+	if u.client == nil {
+		return u.askOpenAI(ctx, knowledge, dateNote, places, question, history)
+	}
 
 	params := anthropic.BetaMessageNewParams{
 		Model:     assistantModel,
@@ -210,10 +223,7 @@ func (u *assistantUsecase) Ask(ctx context.Context, question string, history []A
 		resp.Usage.InputTokens, resp.Usage.CacheReadInputTokens, resp.Usage.OutputTokens)
 
 	if resp.StopReason == anthropic.BetaStopReasonRefusal {
-		return &AssistantAnswer{
-			Answer:    "Maaf, Tanya Loka tidak bisa menjawab pertanyaan itu. Coba tanyakan tentang tradisi, rumah ibadah, kuliner, atau agenda budaya.",
-			Locations: []entity.Location{},
-		}, nil
+		return &AssistantAnswer{Answer: refusalAnswer, Locations: []entity.Location{}}, nil
 	}
 
 	var text strings.Builder
@@ -225,13 +235,35 @@ func (u *assistantUsecase) Ask(ctx context.Context, question string, history []A
 	return parseAnswer(text.String(), places), nil
 }
 
-// buildMessages keeps the last turns, starting with a user turn and
-// alternating roles as the API requires, then appends the new question.
-func buildMessages(history []AssistantMessage, question string) []anthropic.BetaMessageParam {
+// askOpenAI answers with OpenAI. Instructions and data come first and stay
+// the same for an hour, so OpenAI's automatic prompt caching can reuse them;
+// today's date comes after.
+func (u *assistantUsecase) askOpenAI(ctx context.Context, knowledge, dateNote string, places map[string]entity.Location, question string, history []AssistantMessage) (*AssistantAnswer, error) {
+	msgs := []openAIMessage{
+		{Role: "system", Content: assistantInstructions + "\n\n" + knowledge + "\n\n" + dateNote},
+	}
+	for _, m := range trimHistory(history) {
+		msgs = append(msgs, openAIMessage{Role: m.Role, Content: m.Content})
+	}
+	msgs = append(msgs, openAIMessage{Role: "user", Content: question})
+
+	text, err := u.openai.chat(ctx, "TanyaLoka", msgs, 0.3, "", nil)
+	if errors.Is(err, errOpenAIRefused) {
+		return &AssistantAnswer{Answer: refusalAnswer, Locations: []entity.Location{}}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return parseAnswer(text, places), nil
+}
+
+// trimHistory keeps the last turns, starting with a user turn and
+// alternating roles, with long messages cut. Both providers use it.
+func trimHistory(history []AssistantMessage) []AssistantMessage {
 	if len(history) > maxHistoryMessages {
 		history = history[len(history)-maxHistoryMessages:]
 	}
-	var msgs []anthropic.BetaMessageParam
+	var out []AssistantMessage
 	expectUser := true
 	for _, m := range history {
 		content := strings.TrimSpace(m.Content)
@@ -243,18 +275,32 @@ func buildMessages(history []AssistantMessage, question string) []anthropic.Beta
 		}
 		switch {
 		case m.Role == "user" && expectUser:
-			msgs = append(msgs, anthropic.NewBetaUserMessage(anthropic.NewBetaTextBlock(content)))
+			out = append(out, AssistantMessage{Role: "user", Content: content})
 			expectUser = false
 		case m.Role == "assistant" && !expectUser:
-			msgs = append(msgs, anthropic.BetaMessageParam{OfAssistant: &anthropic.BetaAssistantMessageParam{
-				Content: []anthropic.BetaContentBlockParamUnion{anthropic.NewBetaTextBlock(content)},
-			}})
+			out = append(out, AssistantMessage{Role: "assistant", Content: content})
 			expectUser = true
 		}
 	}
 	// History must end with an assistant turn before the new question.
 	if !expectUser {
-		msgs = msgs[:len(msgs)-1]
+		out = out[:len(out)-1]
+	}
+	return out
+}
+
+// buildMessages keeps the last turns, starting with a user turn and
+// alternating roles as the API requires, then appends the new question.
+func buildMessages(history []AssistantMessage, question string) []anthropic.BetaMessageParam {
+	var msgs []anthropic.BetaMessageParam
+	for _, m := range trimHistory(history) {
+		if m.Role == "user" {
+			msgs = append(msgs, anthropic.NewBetaUserMessage(anthropic.NewBetaTextBlock(m.Content)))
+		} else {
+			msgs = append(msgs, anthropic.BetaMessageParam{OfAssistant: &anthropic.BetaAssistantMessageParam{
+				Content: []anthropic.BetaContentBlockParamUnion{anthropic.NewBetaTextBlock(m.Content)},
+			}})
+		}
 	}
 	return append(msgs, anthropic.NewBetaUserMessage(anthropic.NewBetaTextBlock(question)))
 }

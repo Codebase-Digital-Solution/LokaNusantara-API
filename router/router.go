@@ -40,6 +40,7 @@ func SetupRouter(db *gorm.DB, cfg *config.Config) *gin.Engine {
 	reviewRepo := repository.NewReviewRepository(db)
 	eventRepo := repository.NewEventRepository(db)
 	trailRepo := repository.NewTrailRepository(db)
+	bookmarkRepo := repository.NewBookmarkRepository(db)
 
 	// Initialize usecases
 	authUsecase := usecase.NewAuthUsecase(userRepo)
@@ -48,14 +49,19 @@ func SetupRouter(db *gorm.DB, cfg *config.Config) *gin.Engine {
 	reviewUsecase := usecase.NewReviewUsecase(reviewRepo, userRepo, locationRepo)
 	eventUsecase := usecase.NewEventUsecase(eventRepo, locationRepo)
 	trailUsecase := usecase.NewTrailUsecase(trailRepo, locationRepo)
+	bookmarkUsecase := usecase.NewBookmarkUsecase(bookmarkRepo, locationRepo)
 
-	// Tanya Loka is enabled only when an Anthropic API key is configured.
+	// OpenAI settings: admin-editable in the database, env as fallback.
+	aiSettings := usecase.NewAISettingsUsecase(repository.NewSettingRepository(db), cfg.OpenAIAPIKey, cfg.OpenAIModel)
+
+	// Tanya Loka needs an Anthropic or an OpenAI API key.
 	var claude *anthropic.Client
 	if cfg.AnthropicAPIKey != "" {
 		client := anthropic.NewClient(option.WithAPIKey(cfg.AnthropicAPIKey))
 		claude = &client
 	}
-	assistantUsecase := usecase.NewAssistantUsecase(db, claude)
+	// Uses Claude when ANTHROPIC_API_KEY is set, otherwise OpenAI.
+	assistantUsecase := usecase.NewAssistantUsecase(db, claude, aiSettings)
 
 	// Initialize handlers
 	authHandler := handler.NewAuthHandler(authUsecase, cfg)
@@ -66,6 +72,18 @@ func SetupRouter(db *gorm.DB, cfg *config.Config) *gin.Engine {
 	trailHandler := handler.NewTrailHandler(trailUsecase)
 	assistantHandler := handler.NewAssistantHandler(assistantUsecase)
 	adminHandler := handler.NewAdminHandler(db)
+	uploadHandler := handler.NewUploadHandler(cfg.UploadDir)
+	adminSettingsHandler := handler.NewAdminSettingsHandler(aiSettings)
+	plannerHandler := handler.NewPlannerHandler(
+		usecase.NewPlannerUsecase(aiSettings, locationRepo, eventRepo),
+	)
+	bookmarkHandler := handler.NewBookmarkHandler(bookmarkUsecase)
+	savedPlanHandler := handler.NewSavedPlanHandler(
+		usecase.NewSavedPlanUsecase(repository.NewSavedPlanRepository(db), locationRepo),
+	)
+
+	// Uploaded images (location photos), public and cacheable.
+	router.Static("/uploads", cfg.UploadDir)
 
 	// Public routes
 	public := router.Group("/api/v1")
@@ -75,6 +93,7 @@ func SetupRouter(db *gorm.DB, cfg *config.Config) *gin.Engine {
 		{
 			auth.POST("/register", authHandler.Register)
 			auth.POST("/login", authHandler.Login)
+			auth.POST("/google", middleware.RateLimit(30, 10*time.Minute), authHandler.Google)
 		}
 
 		// Public location routes
@@ -104,6 +123,9 @@ func SetupRouter(db *gorm.DB, cfg *config.Config) *gin.Engine {
 
 		// Tanya Loka AI guide, rate limited per IP to control cost
 		public.POST("/assistant/ask", middleware.RateLimit(20, 10*time.Minute), assistantHandler.Ask)
+
+		// Visit planner (OpenAI), rate limited per IP to control cost
+		public.POST("/planner", middleware.RateLimit(10, 10*time.Minute), plannerHandler.Plan)
 	}
 
 	// Routes for any signed-in user (the mobile app)
@@ -117,6 +139,22 @@ func SetupRouter(db *gorm.DB, cfg *config.Config) *gin.Engine {
 			reviews.GET("/:id", reviewHandler.GetByID)
 			reviews.PUT("/:id", reviewHandler.Update)
 			reviews.DELETE("/:id", reviewHandler.Delete)
+		}
+
+		// Saved places of the signed-in user
+		bookmarks := protected.Group("/bookmarks")
+		{
+			bookmarks.GET("", bookmarkHandler.GetAll)
+			bookmarks.PUT("/:locationId", bookmarkHandler.Add)
+			bookmarks.DELETE("/:locationId", bookmarkHandler.Remove)
+		}
+
+		// Saved visit plans of the signed-in user
+		plans := protected.Group("/plans")
+		{
+			plans.GET("", savedPlanHandler.List)
+			plans.POST("", savedPlanHandler.Save)
+			plans.DELETE("/:id", savedPlanHandler.Delete)
 		}
 
 		userReviews := protected.Group("/users/:userId/reviews")
@@ -139,6 +177,7 @@ func SetupRouter(db *gorm.DB, cfg *config.Config) *gin.Engine {
 		categories := admin.Group("/categories")
 		{
 			categories.POST("", categoryHandler.Create)
+			categories.PUT("/order", categoryHandler.Reorder)
 			categories.PUT("/:id", categoryHandler.Update)
 			categories.DELETE("/:id", categoryHandler.Delete)
 		}
@@ -160,7 +199,11 @@ func SetupRouter(db *gorm.DB, cfg *config.Config) *gin.Engine {
 		panel := admin.Group("/admin")
 		{
 			panel.GET("/stats", adminHandler.Stats)
+			panel.POST("/uploads/location-image", uploadHandler.LocationImage)
 			panel.GET("/users", adminHandler.Users)
+			panel.GET("/settings/ai", adminSettingsHandler.GetAI)
+			panel.PUT("/settings/ai", adminSettingsHandler.UpdateAI)
+			panel.POST("/settings/ai/test", adminSettingsHandler.TestAI)
 			panel.GET("/events", eventHandler.AdminGetAll)
 			panel.GET("/reviews", reviewHandler.AdminGetAll)
 		}

@@ -6,12 +6,13 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"strings"
 )
 
 type LocationUsecase interface {
-	CreateLocation(name, description, history, address string, latitude, longitude float64, categoryID uint) (*entity.Location, error)
+	CreateLocation(name, description, history, imageURL, address string, latitude, longitude float64, categoryID uint) (*entity.Location, error)
 	GetLocation(id string) (*entity.Location, error)
-	UpdateLocation(id, name, description, history, address string, latitude, longitude float64, categoryID uint) (*entity.Location, error)
+	UpdateLocation(id, name, description, history, imageURL, address string, latitude, longitude float64, categoryID uint) (*entity.Location, error)
 	DeleteLocation(id string) error
 	GetAllLocations(limit, offset int) ([]entity.Location, error)
 	GetLocationsByCategory(categoryID uint, limit, offset int) ([]entity.Location, error)
@@ -31,9 +32,12 @@ func NewLocationUsecase(locationRepo repository.LocationRepository, categoryRepo
 	}
 }
 
-func (u *locationUsecase) CreateLocation(name, description, history, address string, latitude, longitude float64, categoryID uint) (*entity.Location, error) {
+func (u *locationUsecase) CreateLocation(name, description, history, imageURL, address string, latitude, longitude float64, categoryID uint) (*entity.Location, error) {
 	if name == "" {
 		return nil, errors.New("location name is required")
+	}
+	if !validImageURL(imageURL) {
+		return nil, errImageURL
 	}
 	if latitude < -90 || latitude > 90 {
 		return nil, errors.New("invalid latitude")
@@ -55,6 +59,7 @@ func (u *locationUsecase) CreateLocation(name, description, history, address str
 		Name:        name,
 		Description: description,
 		History:     history,
+		ImageURL:    imageURL,
 		Address:     address,
 		Latitude:    latitude,
 		Longitude:   longitude,
@@ -72,9 +77,12 @@ func (u *locationUsecase) GetLocation(id string) (*entity.Location, error) {
 	return u.locationRepo.GetByID(id)
 }
 
-func (u *locationUsecase) UpdateLocation(id, name, description, history, address string, latitude, longitude float64, categoryID uint) (*entity.Location, error) {
+func (u *locationUsecase) UpdateLocation(id, name, description, history, imageURL, address string, latitude, longitude float64, categoryID uint) (*entity.Location, error) {
 	if name == "" {
 		return nil, errors.New("location name is required")
+	}
+	if !validImageURL(imageURL) {
+		return nil, errImageURL
 	}
 
 	location, err := u.locationRepo.GetByID(id)
@@ -100,6 +108,7 @@ func (u *locationUsecase) UpdateLocation(id, name, description, history, address
 	location.Name = name
 	location.Description = description
 	location.History = history
+	location.ImageURL = imageURL
 	location.Address = address
 	location.Latitude = latitude
 	location.Longitude = longitude
@@ -171,6 +180,15 @@ func (u *locationUsecase) GetNearbyLocations(latitude, longitude, radius float64
 		radius = 5 // Default 5km
 	}
 	return u.locationRepo.GetNearby(latitude, longitude, radius)
+}
+
+var errImageURL = errors.New("image_url must be an uploaded file or an http(s) URL")
+
+// validImageURL accepts no image, an uploaded file path, or a web URL.
+func validImageURL(u string) bool {
+	return u == "" ||
+		strings.HasPrefix(u, "/uploads/") && !strings.Contains(u, "..") ||
+		strings.HasPrefix(u, "https://") || strings.HasPrefix(u, "http://")
 }
 
 func generateLocationID() string {
