@@ -1,0 +1,15 @@
+$kind: http-request
+description: Pilih file JPG, PNG, atau WebP maksimal 5 MB pada form-data field file.
+url: "{{baseUrl}}/api/v1/admin/uploads/location-image"
+method: POST
+body:
+  type: formdata
+  content:
+    - type: file
+      key: file
+      src: ""
+auth:
+  type: bearer
+  credentials:
+    token: "{{jwt_token}}"
+order: 2000

@@ -1,0 +1,6 @@
+$kind: http-request
+url: "{{baseUrl}}/api/v1/locations/nearby?lat=-8.6705&lon=115.2126&radius=5&lang={{lang}}&include_translations=true"
+method: GET
+auth:
+  type: noauth
+order: 3000

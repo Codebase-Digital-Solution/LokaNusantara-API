@@ -1,0 +1,3 @@
+$kind: collection
+description: Endpoint baca lokasi. Gunakan lang=id, en, ja, atau ko; teks yang belum diterjemahkan akan fallback ke Indonesia.
+order: 2000

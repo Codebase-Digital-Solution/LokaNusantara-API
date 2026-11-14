@@ -1,0 +1,6 @@
+$kind: http-request
+url: "{{baseUrl}}/api/v1/locations/{{locationId}}?lang={{lang}}&include_translations=true"
+method: GET
+auth:
+  type: noauth
+order: 4000

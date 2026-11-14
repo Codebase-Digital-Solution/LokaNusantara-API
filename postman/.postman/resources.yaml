@@ -1,0 +1,16 @@
+# Use this workspace to collaborate
+workspace:
+  id: b583d64d-c567-474a-afe2-a736554bd404
+
+localResources:
+  collections:
+    - ../LokaNusantara API.postman_collection.json
+    - ../LokaNusantara API
+  environments:
+    - ../LokaNusantara Local.environment.yaml
+
+# Each entry here maps a local resource to one or more corresponding objects in Postman Cloud
+
+cloudResources:
+  collections:
+    ../LokaNusantara API: 5c19ed24-9a98-4f70-9f0f-2f115552d89b

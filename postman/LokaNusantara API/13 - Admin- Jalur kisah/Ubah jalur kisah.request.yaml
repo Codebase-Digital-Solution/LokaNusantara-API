@@ -1,0 +1,43 @@
+$kind: http-request
+url: "{{baseUrl}}/api/v1/trails/{{trailId}}?lang=id&include_translations=true"
+method: PUT
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "slug": "jalur-contoh",
+      "title": "Jalur Contoh",
+      "subtitle": "Perjalanan budaya",
+      "story": "Cerita jalur.",
+      "color": "#D97706",
+      "image_url": "",
+      "translations": {
+        "id": {
+          "title": "Jalur Contoh",
+          "subtitle": "Perjalanan budaya",
+          "story": "Cerita jalur."
+        },
+        "en": {
+          "title": "Example Trail",
+          "subtitle": "A cultural journey",
+          "story": "Trail story."
+        }
+      },
+      "stops": [
+        {
+          "location_id": "{{locationId}}",
+          "note": "Catatan kunjungan.",
+          "translations": {
+            "id": "Catatan kunjungan.",
+            "en": "Visitor note."
+          }
+        }
+      ]
+    }
+auth:
+  type: bearer
+  credentials:
+    token: "{{jwt_token}}"
+order: 2000

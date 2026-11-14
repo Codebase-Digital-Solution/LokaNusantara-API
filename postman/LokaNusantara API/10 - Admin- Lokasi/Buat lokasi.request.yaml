@@ -1,0 +1,49 @@
+$kind: http-request
+url: "{{baseUrl}}/api/v1/locations?lang=id&include_translations=true"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "name": "Pura Contoh",
+      "description": "Deskripsi singkat tempat.",
+      "history": "Riwayat tempat.",
+      "address": "Bali, Indonesia",
+      "latitude": -8.6705,
+      "longitude": 115.2126,
+      "category_id": {{categoryId}},
+      "image_url": "",
+      "translations": {
+        "id": {
+          "name": "Pura Contoh",
+          "description": "Deskripsi singkat tempat.",
+          "history": "Riwayat tempat.",
+          "address": "Bali, Indonesia"
+        },
+        "en": {
+          "name": "Example Temple",
+          "description": "A brief description.",
+          "history": "Historical background.",
+          "address": "Bali, Indonesia"
+        },
+        "ja": {
+          "name": "例の寺院",
+          "description": "場所の説明。",
+          "history": "歴史。",
+          "address": "インドネシア、バリ島"
+        },
+        "ko": {
+          "name": "예시 사원",
+          "description": "장소 설명.",
+          "history": "역사.",
+          "address": "인도네시아 발리"
+        }
+      }
+    }
+auth:
+  type: bearer
+  credentials:
+    token: "{{jwt_token}}"
+order: 1000

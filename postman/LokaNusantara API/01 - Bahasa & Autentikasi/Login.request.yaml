@@ -1,0 +1,23 @@
+$kind: http-request
+description: Login dengan akun user/admin. Token dari respons disimpan otomatis ke jwt_token.
+url: "{{baseUrl}}/api/v1/auth/login"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "email": "{{loginEmail}}",
+      "password": "{{loginPassword}}"
+    }
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      const data = pm.response.json();
+      if (data && data.token) { pm.environment.set("jwt_token", data.token); pm.collectionVariables.set("jwt_token", data.token); }
+      if (data && data.id) { pm.environment.set("userId", data.id); pm.collectionVariables.set("userId", data.id); }
+    language: text/javascript
+order: 3000

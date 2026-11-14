@@ -1,0 +1,21 @@
+$kind: http-request
+description: api_key write-only. Gunakan environment variable rahasia openaiApiKey; kosongkan dan set clear_api_key=true untuk menghapus key yang tersimpan.
+url: "{{baseUrl}}/api/v1/admin/settings/ai"
+method: PUT
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "api_key": "{{openaiApiKey}}",
+      "clear_api_key": false,
+      "model": "gpt-4o-mini",
+      "max_input_chars": 500,
+      "max_output_tokens": 2000
+    }
+auth:
+  type: bearer
+  credentials:
+    token: "{{jwt_token}}"
+order: 4000

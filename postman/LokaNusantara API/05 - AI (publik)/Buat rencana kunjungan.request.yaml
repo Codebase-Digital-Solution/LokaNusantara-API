@@ -1,0 +1,19 @@
+$kind: http-request
+description: Memerlukan API key OpenAI di server.
+url: "{{baseUrl}}/api/v1/planner"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "location_id": "{{locationId}}",
+      "budget": 500000,
+      "people": 2,
+      "days": 1,
+      "notes": "Utamakan tempat budaya dan makanan lokal."
+    }
+auth:
+  type: noauth
+order: 2000

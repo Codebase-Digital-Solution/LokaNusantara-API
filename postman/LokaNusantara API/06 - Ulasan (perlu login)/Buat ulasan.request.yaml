@@ -1,0 +1,18 @@
+$kind: http-request
+url: "{{baseUrl}}/api/v1/reviews"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "location_id": "{{locationId}}",
+      "rating": 5,
+      "comment": "Tempat yang menarik untuk dikunjungi."
+    }
+auth:
+  type: bearer
+  credentials:
+    token: "{{jwt_token}}"
+order: 1000

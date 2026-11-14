@@ -1,0 +1,6 @@
+$kind: http-request
+url: "{{baseUrl}}/api/v1/events?from=2026-01-01&to=2027-12-31&lang={{lang}}&include_translations=true&limit=50&offset=0"
+method: GET
+auth:
+  type: noauth
+order: 1000

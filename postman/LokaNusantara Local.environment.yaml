@@ -1,0 +1,32 @@
+name: LokaNusantara Local
+values:
+  - key: baseUrl
+    value: 'http://localhost:8080'
+  - key: lang
+    value: id
+  - key: jwt_token
+    value: ''
+  - key: loginEmail
+    value: ''
+  - key: loginPassword
+    value: ''
+  - key: googleIdToken
+    value: ''
+  - key: openaiApiKey
+    value: ''
+  - key: locationId
+    value: ''
+  - key: categoryId
+    value: '1'
+  - key: eventId
+    value: ''
+  - key: trailId
+    value: ''
+  - key: reviewId
+    value: ''
+  - key: savedPlanId
+    value: ''
+  - key: userId
+    value: ''
+  - key: uploadedImagePath
+    value: ''

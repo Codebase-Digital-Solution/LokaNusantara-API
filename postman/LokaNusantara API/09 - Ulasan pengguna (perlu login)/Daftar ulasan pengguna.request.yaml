@@ -1,0 +1,8 @@
+$kind: http-request
+url: "{{baseUrl}}/api/v1/users/{{userId}}/reviews?lang={{lang}}&limit=10&offset=0"
+method: GET
+auth:
+  type: bearer
+  credentials:
+    token: "{{jwt_token}}"
+order: 1000

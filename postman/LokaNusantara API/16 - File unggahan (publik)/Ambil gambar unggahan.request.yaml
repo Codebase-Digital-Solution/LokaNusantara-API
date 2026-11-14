@@ -1,0 +1,7 @@
+$kind: http-request
+description: Masukkan path relatif dari hasil upload, misalnya locations/nama-file.jpg.
+url: "{{baseUrl}}/uploads/{{uploadedImagePath}}"
+method: GET
+auth:
+  type: noauth
+order: 1000

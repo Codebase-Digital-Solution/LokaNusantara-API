@@ -1,0 +1,30 @@
+$kind: http-request
+url: "{{baseUrl}}/api/v1/categories/{{categoryId}}?lang=id&include_translations=true"
+method: PUT
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "name": "budaya",
+      "translations": {
+        "id": {
+          "label": "Budaya"
+        },
+        "en": {
+          "label": "Culture"
+        },
+        "ja": {
+          "label": "文化"
+        },
+        "ko": {
+          "label": "문화"
+        }
+      }
+    }
+auth:
+  type: bearer
+  credentials:
+    token: "{{jwt_token}}"
+order: 3000

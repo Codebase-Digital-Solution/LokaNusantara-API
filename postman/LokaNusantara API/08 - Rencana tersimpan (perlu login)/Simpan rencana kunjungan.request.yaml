@@ -1,0 +1,45 @@
+$kind: http-request
+url: "{{baseUrl}}/api/v1/plans"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "location_id": "{{locationId}}",
+      "plan": {
+        "summary": "Rencana satu hari di sekitar lokasi pilihan.",
+        "budget": 500000,
+        "people": 2,
+        "days": 1,
+        "total_estimate": 350000,
+        "per_person_estimate": 175000,
+        "within_budget": true,
+        "budget_note": "Masih sesuai budget.",
+        "costs": [
+          {
+            "category": "Transportasi",
+            "item": "Transportasi lokal",
+            "amount": 150000,
+            "note": "Perkiraan untuk rombongan."
+          }
+        ],
+        "itinerary": [
+          {
+            "day": 1,
+            "time": "09:00",
+            "activity": "Mengunjungi lokasi utama",
+            "location_id": "{{locationId}}"
+          }
+        ],
+        "tips": [
+          "Gunakan pakaian yang sopan."
+        ]
+      }
+    }
+auth:
+  type: bearer
+  credentials:
+    token: "{{jwt_token}}"
+order: 2000

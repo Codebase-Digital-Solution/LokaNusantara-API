@@ -1,0 +1,24 @@
+$kind: collection
+description: Collection lengkap endpoint backend LokaNusantara. Atur baseUrl untuk host API, pilih lang=id|en|ja|ko untuk konten, dan login untuk mengisi jwt_token otomatis. Admin endpoint membutuhkan akun ber-role admin.
+variables:
+  baseUrl: http://localhost:8080
+  lang: id
+  jwt_token: ""
+  loginEmail: ""
+  loginPassword: ""
+  googleIdToken: ""
+  openaiApiKey: ""
+  locationId: ""
+  categoryId: "1"
+  eventId: ""
+  trailId: ""
+  reviewId: ""
+  savedPlanId: ""
+  userId: ""
+  uploadedImagePath: ""
+auth:
+  - id: ac4d0344-c47c-4dba-b8bf-e5e7f1998204
+    type: bearer
+    name: bearer auth
+    credentials:
+      token: "{{jwt_token}}"

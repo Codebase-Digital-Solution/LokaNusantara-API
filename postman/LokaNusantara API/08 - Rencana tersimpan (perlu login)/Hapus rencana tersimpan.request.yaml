@@ -1,0 +1,8 @@
+$kind: http-request
+url: "{{baseUrl}}/api/v1/plans/{{savedPlanId}}"
+method: DELETE
+auth:
+  type: bearer
+  credentials:
+    token: "{{jwt_token}}"
+order: 3000

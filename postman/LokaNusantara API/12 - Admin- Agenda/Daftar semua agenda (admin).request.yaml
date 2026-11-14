@@ -1,0 +1,8 @@
+$kind: http-request
+url: "{{baseUrl}}/api/v1/admin/events?lang=id&include_translations=true"
+method: GET
+auth:
+  type: bearer
+  credentials:
+    token: "{{jwt_token}}"
+order: 1000

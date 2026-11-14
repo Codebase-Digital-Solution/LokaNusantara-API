@@ -1,0 +1,6 @@
+$kind: http-request
+url: "{{baseUrl}}/api/v1/locations/{{locationId}}/reviews/rating"
+method: GET
+auth:
+  type: noauth
+order: 6000

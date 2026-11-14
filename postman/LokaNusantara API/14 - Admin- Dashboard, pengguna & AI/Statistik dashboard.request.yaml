@@ -1,0 +1,8 @@
+$kind: http-request
+url: "{{baseUrl}}/api/v1/admin/stats"
+method: GET
+auth:
+  type: bearer
+  credentials:
+    token: "{{jwt_token}}"
+order: 1000

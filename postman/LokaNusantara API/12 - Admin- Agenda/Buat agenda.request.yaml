@@ -1,0 +1,49 @@
+$kind: http-request
+url: "{{baseUrl}}/api/v1/events?lang=id&include_translations=true"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "name": "Festival Contoh",
+      "description": "Deskripsi acara.",
+      "category": "budaya",
+      "start_date": "2027-05-01",
+      "end_date": "2027-05-03",
+      "is_estimate": false,
+      "region": "Kabupaten Contoh",
+      "location_id": "{{locationId}}",
+      "translations": {
+        "id": {
+          "name": "Festival Contoh",
+          "description": "Deskripsi acara.",
+          "category": "budaya",
+          "region": "Kabupaten Contoh"
+        },
+        "en": {
+          "name": "Example Festival",
+          "description": "Event description.",
+          "category": "Culture",
+          "region": "Example Regency"
+        },
+        "ja": {
+          "name": "例の祭り",
+          "description": "イベントの説明。",
+          "category": "文化",
+          "region": "例の県"
+        },
+        "ko": {
+          "name": "예시 축제",
+          "description": "행사 설명.",
+          "category": "문화",
+          "region": "예시 지역"
+        }
+      }
+    }
+auth:
+  type: bearer
+  credentials:
+    token: "{{jwt_token}}"
+order: 2000
