@@ -28,7 +28,7 @@ func (r *bookmarkRepository) GetLocations(userID string) ([]entity.Location, err
 	err := r.db.
 		Select(listSelect).
 		Joins("JOIN bookmarks ON bookmarks.location_id = locations.id").
-		Preload("Category").
+		Preload("Translations").Preload("Category.Translations").
 		Where("bookmarks.user_id = ?", userID).
 		Order("bookmarks.created_at DESC").
 		Find(&locations).Error

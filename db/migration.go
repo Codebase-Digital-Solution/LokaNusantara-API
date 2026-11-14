@@ -2,6 +2,7 @@ package db
 
 import (
 	"api/entity"
+	"api/localize"
 	"fmt"
 
 	"gorm.io/gorm"
@@ -45,12 +46,22 @@ func RunMigrations(db *gorm.DB) error {
 		return fmt.Errorf("failed to migrate Bookmark: %w", err)
 	}
 
+	if err := db.AutoMigrate(&entity.Language{}, &entity.LocationTranslation{}, &entity.CategoryTranslation{}, &entity.EventTranslation{}, &entity.TrailTranslation{}, &entity.TrailStopTranslation{}); err != nil {
+		return fmt.Errorf("failed to migrate translations: %w", err)
+	}
+	if err := seedLanguages(db); err != nil {
+		return err
+	}
+
 	// Seed initial data if not exist
 	seedCategories(db)
 	seedCategoryOrder(db)
 	SeedLocations(db)
 	SeedEvents(db)
 	SeedTrails(db)
+	if err := backfillDefaultTranslations(db); err != nil {
+		return fmt.Errorf("failed to backfill Indonesian translations: %w", err)
+	}
 
 	return nil
 }
@@ -103,4 +114,75 @@ func seedCategoryOrder(db *gorm.DB) {
 		}
 		db.Model(&entity.Category{}).Where("id = ?", c.ID).Update("position", pos)
 	}
+}
+
+func seedLanguages(db *gorm.DB) error {
+	for _, language := range localize.SupportedLanguages {
+		if err := db.Where("code = ?", language.Code).Assign(language).FirstOrCreate(&entity.Language{}).Error; err != nil {
+			return fmt.Errorf("failed to seed language %s: %w", language.Code, err)
+		}
+	}
+	return nil
+}
+
+// backfillDefaultTranslations copies the existing Indonesian content into the
+// translation tables. It is safe to run at every startup and never overwrites
+// translations that an administrator has edited.
+func backfillDefaultTranslations(db *gorm.DB) error {
+	var locations []entity.Location
+	if err := db.Find(&locations).Error; err != nil {
+		return err
+	}
+	for _, value := range locations {
+		row := entity.LocationTranslation{LocationID: value.ID, LanguageCode: localize.DefaultLanguage}
+		if err := db.Where("location_id = ? AND language_code = ?", value.ID, localize.DefaultLanguage).FirstOrCreate(&row, entity.LocationTranslation{
+			Name: value.Name, Description: value.Description, History: value.History, Address: value.Address,
+		}).Error; err != nil {
+			return err
+		}
+	}
+
+	var categories []entity.Category
+	if err := db.Find(&categories).Error; err != nil {
+		return err
+	}
+	for _, value := range categories {
+		row := entity.CategoryTranslation{CategoryID: value.ID, LanguageCode: localize.DefaultLanguage}
+		if err := db.Where("category_id = ? AND language_code = ?", value.ID, localize.DefaultLanguage).FirstOrCreate(&row, entity.CategoryTranslation{Label: value.Name}).Error; err != nil {
+			return err
+		}
+	}
+
+	var events []entity.Event
+	if err := db.Find(&events).Error; err != nil {
+		return err
+	}
+	for _, value := range events {
+		row := entity.EventTranslation{EventID: value.ID, LanguageCode: localize.DefaultLanguage}
+		if err := db.Where("event_id = ? AND language_code = ?", value.ID, localize.DefaultLanguage).FirstOrCreate(&row, entity.EventTranslation{
+			Name: value.Name, Description: value.Description, Category: value.Category, Region: value.Region,
+		}).Error; err != nil {
+			return err
+		}
+	}
+
+	var trails []entity.Trail
+	if err := db.Preload("Stops").Find(&trails).Error; err != nil {
+		return err
+	}
+	for _, value := range trails {
+		row := entity.TrailTranslation{TrailID: value.ID, LanguageCode: localize.DefaultLanguage}
+		if err := db.Where("trail_id = ? AND language_code = ?", value.ID, localize.DefaultLanguage).FirstOrCreate(&row, entity.TrailTranslation{
+			Title: value.Title, Subtitle: value.Subtitle, Story: value.Story,
+		}).Error; err != nil {
+			return err
+		}
+		for _, stop := range value.Stops {
+			stopRow := entity.TrailStopTranslation{TrailStopID: stop.ID, LanguageCode: localize.DefaultLanguage}
+			if err := db.Where("trail_stop_id = ? AND language_code = ?", stop.ID, localize.DefaultLanguage).FirstOrCreate(&stopRow, entity.TrailStopTranslation{Note: stop.Note}).Error; err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }

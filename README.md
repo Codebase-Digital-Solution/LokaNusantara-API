@@ -177,6 +177,27 @@ curl http://localhost:8080/api/v1/categories
 
 You should get an empty array response.
 
+## Multilingual Content
+
+Public content endpoints accept `?lang=id|en|ja|ko`; omitting it defaults to Indonesian. If a field has no requested-language translation, the API uses its Indonesian value. Supported languages are available at `GET /api/v1/languages`.
+
+Translations are stored in per-entity tables (`location_translations`, `category_translations`, `event_translations`, `trail_translations`, and `trail_stop_translations`) keyed by the language code. Existing Indonesian values are backfilled during startup migrations. Admin forms send translations keyed by language code, for example:
+
+```json
+{
+  "name": "Pura Tanah Lot",
+  "latitude": -8.621,
+  "longitude": 115.0866,
+  "category_id": 2,
+  "translations": {
+    "id": { "name": "Pura Tanah Lot", "address": "Beraban, Tabanan", "description": "...", "history": "..." },
+    "en": { "name": "Tanah Lot Temple", "address": "Beraban, Tabanan", "description": "...", "history": "..." }
+  }
+}
+```
+
+Use `include_translations=true` on content GET endpoints to retrieve all translation rows for admin editing.
+
 ## API Endpoints
 
 ### Authentication

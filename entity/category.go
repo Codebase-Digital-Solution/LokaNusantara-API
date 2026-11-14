@@ -6,7 +6,8 @@ type Category struct {
 	// Position orders categories in the app and admin panel (lowest first).
 	Position int `gorm:"not null;default:0;index" json:"position"`
 
-	Locations []Location `gorm:"foreignKey:CategoryID;constraint:OnDelete:RESTRICT" json:"locations,omitempty"`
+	Locations    []Location            `gorm:"foreignKey:CategoryID;constraint:OnDelete:RESTRICT" json:"locations,omitempty"`
+	Translations []CategoryTranslation `gorm:"foreignKey:CategoryID;constraint:OnDelete:CASCADE" json:"translations,omitempty"`
 }
 
 func (Category) TableName() string {

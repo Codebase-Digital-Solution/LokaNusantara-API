@@ -2,6 +2,7 @@ package handler
 
 import (
 	"api/entity"
+	"api/localize"
 	"api/usecase"
 	"net/http"
 	"strconv"
@@ -66,6 +67,7 @@ func (h *ReviewHandler) GetByID(c *gin.Context) {
 		return
 	}
 
+	localize.Location(&review.Location, c.Query("lang"), false)
 	c.JSON(http.StatusOK, review)
 }
 
@@ -93,6 +95,9 @@ func (h *ReviewHandler) AdminGetAll(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
+	}
+	for i := range reviews {
+		localize.Location(&reviews[i].Location, c.Query("lang"), false)
 	}
 	if reviews == nil {
 		reviews = make([]entity.Review, 0)
@@ -200,6 +205,9 @@ func (h *ReviewHandler) GetUserReviews(c *gin.Context) {
 		return
 	}
 
+	for i := range reviews {
+		localize.Location(&reviews[i].Location, c.Query("lang"), false)
+	}
 	if reviews == nil {
 		reviews = make([]entity.Review, 0)
 	}

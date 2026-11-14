@@ -19,8 +19,9 @@ type Location struct {
 	CreatedAt  time.Time `json:"created_at"`
 	UpdatedAt  time.Time `json:"updated_at"`
 
-	Category Category `gorm:"foreignKey:CategoryID;constraint:OnDelete:RESTRICT" json:"category"`
-	Reviews  []Review `gorm:"foreignKey:LocationID;constraint:OnDelete:CASCADE" json:"reviews,omitempty"`
+	Category     Category              `gorm:"foreignKey:CategoryID;constraint:OnDelete:RESTRICT" json:"category"`
+	Reviews      []Review              `gorm:"foreignKey:LocationID;constraint:OnDelete:CASCADE" json:"reviews,omitempty"`
+	Translations []LocationTranslation `gorm:"foreignKey:LocationID;constraint:OnDelete:CASCADE" json:"translations,omitempty"`
 }
 
 func (Location) TableName() string {

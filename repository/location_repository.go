@@ -16,7 +16,7 @@ type LocationRepository interface {
 	Delete(id string) error
 	GetAll(limit, offset int) ([]entity.Location, error)
 	GetByCategory(categoryID uint, limit, offset int) ([]entity.Location, error)
-	Search(keyword string, limit, offset int) ([]entity.Location, error)
+	Search(keyword, language string, limit, offset int) ([]entity.Location, error)
 	GetNearby(latitude, longitude, radius float64) ([]entity.Location, error)
 }
 
@@ -30,6 +30,8 @@ func NewLocationRepository(db *gorm.DB) LocationRepository {
 
 // listOrder follows the category order set by the admin (traditions first),
 // then name, so lists are stable and consistent with the category chips.
+const DefaultLanguageCode = "id"
+
 const listOrder = "categories.position ASC, locations.name ASC"
 
 // listSelect: skip description (longtext) untuk list view — hemat bandwidth & query time
@@ -41,7 +43,7 @@ func (r *locationRepository) Create(location *entity.Location) error {
 
 func (r *locationRepository) GetByID(id string) (*entity.Location, error) {
 	var location entity.Location
-	err := r.db.Preload("Category").Preload("Reviews").First(&location, "id = ?", id).Error
+	err := r.db.Preload("Translations").Preload("Category.Translations").Preload("Reviews").First(&location, "id = ?", id).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, errors.New("location not found")
 	}
@@ -62,7 +64,7 @@ func (r *locationRepository) GetAll(limit, offset int) ([]entity.Location, error
 	err := r.db.
 		Select(listSelect).
 		Joins("JOIN categories ON categories.id = locations.category_id").
-		Preload("Category").
+		Preload("Translations").Preload("Category.Translations").
 		Order(listOrder).
 		Limit(limit).Offset(offset).
 		Find(&locations).Error
@@ -75,7 +77,7 @@ func (r *locationRepository) GetByCategory(categoryID uint, limit, offset int) (
 	err := r.db.
 		Select(listSelect).
 		Joins("JOIN categories ON categories.id = locations.category_id").
-		Preload("Category").
+		Preload("Translations").Preload("Category.Translations").
 		Where("locations.category_id = ?", categoryID).
 		Order(listOrder).
 		Limit(limit).Offset(offset).
@@ -84,14 +86,16 @@ func (r *locationRepository) GetByCategory(categoryID uint, limit, offset int) (
 }
 
 // Search: hanya cari di name & address (skip description LIKE yang lambat di longtext)
-func (r *locationRepository) Search(keyword string, limit, offset int) ([]entity.Location, error) {
+func (r *locationRepository) Search(keyword, language string, limit, offset int) ([]entity.Location, error) {
 	var locations []entity.Location
 	like := "%" + keyword + "%"
 	err := r.db.
 		Select(listSelect).
 		Joins("JOIN categories ON categories.id = locations.category_id").
-		Preload("Category").
-		Where("locations.name LIKE ? OR locations.address LIKE ?", like, like).
+		Joins("LEFT JOIN location_translations AS requested_translation ON requested_translation.location_id = locations.id AND requested_translation.language_code = ?", language).
+		Joins("LEFT JOIN location_translations AS default_translation ON default_translation.location_id = locations.id AND default_translation.language_code = ?", DefaultLanguageCode).
+		Preload("Translations").Preload("Category.Translations").
+		Where("locations.name LIKE ? OR locations.address LIKE ? OR requested_translation.name LIKE ? OR requested_translation.address LIKE ? OR default_translation.name LIKE ? OR default_translation.address LIKE ?", like, like, like, like, like, like).
 		Order(listOrder).
 		Limit(limit).Offset(offset).
 		Find(&locations).Error
@@ -112,7 +116,7 @@ func (r *locationRepository) GetNearby(latitude, longitude, radius float64) ([]e
 		fetchErr = r.db.
 			Select(listSelect).
 			Joins("JOIN categories ON categories.id = locations.category_id").
-			Preload("Category").
+			Preload("Translations").Preload("Category.Translations").
 			Where(
 				"(6371 * acos(cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) + sin(radians(?)) * sin(radians(latitude)))) <= ?",
 				latitude, longitude, latitude, radius,

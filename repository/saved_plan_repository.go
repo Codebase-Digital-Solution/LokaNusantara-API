@@ -28,7 +28,7 @@ func NewSavedPlanRepository(db *gorm.DB) SavedPlanRepository {
 func (r *savedPlanRepository) GetByUser(userID string) ([]entity.SavedPlan, error) {
 	var plans []entity.SavedPlan
 	err := r.db.
-		Preload("Location", func(db *gorm.DB) *gorm.DB { return db.Select(listSelect) }).
+		Preload("Location.Translations").Preload("Location.Category.Translations").Preload("Location", func(db *gorm.DB) *gorm.DB { return db.Select(listSelect) }).
 		Preload("Location.Category").
 		Where("user_id = ?", userID).
 		Order("created_at DESC, id DESC").

@@ -2,6 +2,7 @@ package handler
 
 import (
 	"api/entity"
+	"api/localize"
 	"api/usecase"
 	"net/http"
 
@@ -23,6 +24,9 @@ func (h *BookmarkHandler) GetAll(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
+	}
+	for i := range locations {
+		localize.Location(&locations[i], c.Query("lang"), false)
 	}
 	if locations == nil {
 		locations = make([]entity.Location, 0)

@@ -26,10 +26,12 @@ func NewTrailRepository(db *gorm.DB) TrailRepository {
 
 func (r *trailRepository) preloaded() *gorm.DB {
 	return r.db.
+		Preload("Translations").
+		Preload("Stops.Translations").
 		Preload("Stops", func(db *gorm.DB) *gorm.DB {
 			return db.Order("position ASC")
 		}).
-		Preload("Stops.Location.Category")
+		Preload("Stops.Location.Translations").Preload("Stops.Location.Category.Translations").Preload("Stops.Location.Category")
 }
 
 func (r *trailRepository) GetAll() ([]entity.Trail, error) {

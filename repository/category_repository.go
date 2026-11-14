@@ -32,7 +32,7 @@ func (r *categoryRepository) Create(category *entity.Category) error {
 
 func (r *categoryRepository) GetByID(id uint) (*entity.Category, error) {
 	var category entity.Category
-	err := r.db.First(&category, "id = ?", id).Error
+	err := r.db.Preload("Translations").First(&category, "id = ?", id).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, errors.New("category not found")
 	}
@@ -64,7 +64,7 @@ func (r *categoryRepository) Delete(id uint) error {
 
 func (r *categoryRepository) GetAll(limit, offset int) ([]entity.Category, error) {
 	var categories []entity.Category
-	err := r.db.Order("position ASC, name ASC").Limit(limit).Offset(offset).Find(&categories).Error
+	err := r.db.Preload("Translations").Order("position ASC, name ASC").Limit(limit).Offset(offset).Find(&categories).Error
 	return categories, err
 }
 

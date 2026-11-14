@@ -16,7 +16,7 @@ type LocationUsecase interface {
 	DeleteLocation(id string) error
 	GetAllLocations(limit, offset int) ([]entity.Location, error)
 	GetLocationsByCategory(categoryID uint, limit, offset int) ([]entity.Location, error)
-	SearchLocations(keyword string, limit, offset int) ([]entity.Location, error)
+	SearchLocations(keyword, language string, limit, offset int) ([]entity.Location, error)
 	GetNearbyLocations(latitude, longitude, radius float64) ([]entity.Location, error)
 }
 
@@ -156,7 +156,7 @@ func (u *locationUsecase) GetLocationsByCategory(categoryID uint, limit, offset 
 	return u.locationRepo.GetByCategory(categoryID, limit, offset)
 }
 
-func (u *locationUsecase) SearchLocations(keyword string, limit, offset int) ([]entity.Location, error) {
+func (u *locationUsecase) SearchLocations(keyword, language string, limit, offset int) ([]entity.Location, error) {
 	if keyword == "" {
 		return nil, errors.New("search keyword is required")
 	}
@@ -166,7 +166,7 @@ func (u *locationUsecase) SearchLocations(keyword string, limit, offset int) ([]
 	if offset < 0 {
 		offset = 0
 	}
-	return u.locationRepo.Search(keyword, limit, offset)
+	return u.locationRepo.Search(keyword, language, limit, offset)
 }
 
 func (u *locationUsecase) GetNearbyLocations(latitude, longitude, radius float64) ([]entity.Location, error) {

@@ -3,6 +3,7 @@ package router
 import (
 	"api/config"
 	"api/handler"
+	"api/localize"
 	"api/middleware"
 	"api/repository"
 	"api/usecase"
@@ -65,11 +66,11 @@ func SetupRouter(db *gorm.DB, cfg *config.Config) *gin.Engine {
 
 	// Initialize handlers
 	authHandler := handler.NewAuthHandler(authUsecase, cfg)
-	categoryHandler := handler.NewCategoryHandler(categoryUsecase)
-	locationHandler := handler.NewLocationHandler(locationUsecase)
+	categoryHandler := handler.NewCategoryHandler(categoryUsecase, db)
+	locationHandler := handler.NewLocationHandler(locationUsecase, db)
 	reviewHandler := handler.NewReviewHandler(reviewUsecase)
-	eventHandler := handler.NewEventHandler(eventUsecase)
-	trailHandler := handler.NewTrailHandler(trailUsecase)
+	eventHandler := handler.NewEventHandler(eventUsecase, db)
+	trailHandler := handler.NewTrailHandler(trailUsecase, db)
 	assistantHandler := handler.NewAssistantHandler(assistantUsecase)
 	adminHandler := handler.NewAdminHandler(db)
 	uploadHandler := handler.NewUploadHandler(cfg.UploadDir)
@@ -88,6 +89,7 @@ func SetupRouter(db *gorm.DB, cfg *config.Config) *gin.Engine {
 	// Public routes
 	public := router.Group("/api/v1")
 	{
+		public.GET("/languages", func(c *gin.Context) { c.JSON(200, gin.H{"data": localize.SupportedLanguages}) })
 		// Auth routes
 		auth := public.Group("/auth")
 		{

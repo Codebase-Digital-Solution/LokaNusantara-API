@@ -26,6 +26,7 @@ type TrailStopInput struct {
 
 type TrailUsecase interface {
 	GetTrails() ([]entity.Trail, error)
+	GetTrail(id uint) (*entity.Trail, error)
 	CreateTrail(in TrailInput) (*entity.Trail, error)
 	UpdateTrail(id uint, in TrailInput) (*entity.Trail, error)
 	DeleteTrail(id uint) error
@@ -58,6 +59,8 @@ func (u *trailUsecase) GetTrails() ([]entity.Trail, error) {
 	}
 	return trails, nil
 }
+
+func (u *trailUsecase) GetTrail(id uint) (*entity.Trail, error) { return u.trailRepo.GetByID(id) }
 
 var (
 	slugPattern  = regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*$`)

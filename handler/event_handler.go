@@ -2,6 +2,7 @@ package handler
 
 import (
 	"api/entity"
+	"api/localize"
 	"api/usecase"
 	"errors"
 	"net/http"
@@ -9,31 +10,34 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 const dateLayout = "2006-01-02"
 
 type EventHandler struct {
 	eventUsecase usecase.EventUsecase
+	db           *gorm.DB
 }
 
 // EventResponse sends dates as plain "YYYY-MM-DD" so clients never shift
 // them across time zones.
 type EventResponse struct {
-	ID          uint             `json:"id"`
-	Name        string           `json:"name"`
-	Description string           `json:"description"`
-	Category    string           `json:"category"`
-	StartDate   string           `json:"start_date"`
-	EndDate     *string          `json:"end_date,omitempty"`
-	IsEstimate  bool             `json:"is_estimate"`
-	Region      string           `json:"region"`
-	LocationID  *string          `json:"location_id,omitempty"`
-	Location    *entity.Location `json:"location,omitempty"`
+	ID           uint                      `json:"id"`
+	Name         string                    `json:"name"`
+	Description  string                    `json:"description"`
+	Category     string                    `json:"category"`
+	StartDate    string                    `json:"start_date"`
+	EndDate      *string                   `json:"end_date,omitempty"`
+	IsEstimate   bool                      `json:"is_estimate"`
+	Region       string                    `json:"region"`
+	LocationID   *string                   `json:"location_id,omitempty"`
+	Location     *entity.Location          `json:"location,omitempty"`
+	Translations []entity.EventTranslation `json:"translations,omitempty"`
 }
 
-func NewEventHandler(eventUsecase usecase.EventUsecase) *EventHandler {
-	return &EventHandler{eventUsecase: eventUsecase}
+func NewEventHandler(eventUsecase usecase.EventUsecase, db *gorm.DB) *EventHandler {
+	return &EventHandler{eventUsecase: eventUsecase, db: db}
 }
 
 // GetAll lists events between ?from and ?to (YYYY-MM-DD). Defaults to the
@@ -64,6 +68,7 @@ func (h *EventHandler) GetAll(c *gin.Context) {
 
 	data := make([]EventResponse, 0, len(events))
 	for _, e := range events {
+		localize.Event(&e, c.Query("lang"), c.Query("include_translations") == "true")
 		data = append(data, toEventResponse(e))
 	}
 
@@ -76,15 +81,16 @@ func (h *EventHandler) GetAll(c *gin.Context) {
 
 func toEventResponse(e entity.Event) EventResponse {
 	item := EventResponse{
-		ID:          e.ID,
-		Name:        e.Name,
-		Description: e.Description,
-		Category:    e.Category,
-		StartDate:   e.StartDate.Format(dateLayout),
-		IsEstimate:  e.IsEstimate,
-		Region:      e.Region,
-		LocationID:  e.LocationID,
-		Location:    e.Location,
+		ID:           e.ID,
+		Name:         e.Name,
+		Description:  e.Description,
+		Category:     e.Category,
+		StartDate:    e.StartDate.Format(dateLayout),
+		IsEstimate:   e.IsEstimate,
+		Region:       e.Region,
+		LocationID:   e.LocationID,
+		Location:     e.Location,
+		Translations: e.Translations,
 	}
 	if e.EndDate != nil {
 		end := e.EndDate.Format(dateLayout)
@@ -95,14 +101,26 @@ func toEventResponse(e entity.Event) EventResponse {
 
 // EventRequest is the admin create/update payload. Dates are YYYY-MM-DD.
 type EventRequest struct {
-	Name        string  `json:"name" binding:"required"`
-	Description string  `json:"description"`
-	Category    string  `json:"category"`
-	StartDate   string  `json:"start_date" binding:"required"`
-	EndDate     *string `json:"end_date"`
-	IsEstimate  bool    `json:"is_estimate"`
-	Region      string  `json:"region"`
-	LocationID  *string `json:"location_id"`
+	Name         string                             `json:"name" binding:"required"`
+	Description  string                             `json:"description"`
+	Category     string                             `json:"category"`
+	StartDate    string                             `json:"start_date" binding:"required"`
+	EndDate      *string                            `json:"end_date"`
+	IsEstimate   bool                               `json:"is_estimate"`
+	Region       string                             `json:"region"`
+	LocationID   *string                            `json:"location_id"`
+	Translations map[string]entity.EventTranslation `json:"translations"`
+}
+
+func (r EventRequest) translations() map[string]entity.EventTranslation {
+	values := r.Translations
+	if values == nil {
+		values = map[string]entity.EventTranslation{}
+	}
+	if _, ok := values[localize.DefaultLanguage]; !ok {
+		values[localize.DefaultLanguage] = entity.EventTranslation{Name: r.Name, Description: r.Description, Category: r.Category, Region: r.Region}
+	}
+	return values
 }
 
 func (r EventRequest) toInput() (usecase.EventInput, error) {
@@ -138,6 +156,7 @@ func (h *EventHandler) AdminGetAll(c *gin.Context) {
 	}
 	data := make([]EventResponse, 0, len(events))
 	for _, e := range events {
+		localize.Event(&e, c.Query("lang"), c.Query("include_translations") == "true")
 		data = append(data, toEventResponse(e))
 	}
 	c.JSON(http.StatusOK, gin.H{"data": data})
@@ -159,6 +178,17 @@ func (h *EventHandler) Create(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	translations := req.translations()
+	if err := localize.SaveEventTranslations(h.db, event.ID, translations); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save translations"})
+		return
+	}
+	event.Translations = nil
+	if err := h.db.Where("event_id = ?", event.ID).Find(&event.Translations).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load translations"})
+		return
+	}
+	localize.Event(event, c.Query("lang"), c.Query("include_translations") == "true")
 	c.JSON(http.StatusCreated, toEventResponse(*event))
 }
 
@@ -183,6 +213,17 @@ func (h *EventHandler) Update(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	translations := req.translations()
+	if err := localize.SaveEventTranslations(h.db, event.ID, translations); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save translations"})
+		return
+	}
+	event.Translations = nil
+	if err := h.db.Where("event_id = ?", event.ID).Find(&event.Translations).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load translations"})
+		return
+	}
+	localize.Event(event, c.Query("lang"), c.Query("include_translations") == "true")
 	c.JSON(http.StatusOK, toEventResponse(*event))
 }
 

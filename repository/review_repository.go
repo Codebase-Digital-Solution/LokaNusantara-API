@@ -33,7 +33,7 @@ func (r *reviewRepository) Create(review *entity.Review) error {
 
 func (r *reviewRepository) GetByID(id uint) (*entity.Review, error) {
 	var review entity.Review
-	err := r.db.Preload("User").Preload("Location").First(&review, "id = ?", id).Error
+	err := r.db.Preload("User").Preload("Location.Translations").Preload("Location.Category.Translations").Preload("Location").First(&review, "id = ?", id).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, errors.New("review not found")
 	}
@@ -53,7 +53,7 @@ func (r *reviewRepository) Delete(id uint) error {
 
 func (r *reviewRepository) GetByLocation(locationID string, limit, offset int) ([]entity.Review, error) {
 	var reviews []entity.Review
-	err := r.db.Where("location_id = ?", locationID).Preload("User").Limit(limit).Offset(offset).Find(&reviews).Error
+	err := r.db.Where("location_id = ?", locationID).Preload("User").Preload("Location.Translations").Limit(limit).Offset(offset).Find(&reviews).Error
 	return reviews, err
 }
 
@@ -73,9 +73,9 @@ func (r *reviewRepository) GetAll(limit, offset int) ([]entity.Review, error) {
 	var reviews []entity.Review
 	err := r.db.
 		Preload("User").
-		Preload("Location", func(db *gorm.DB) *gorm.DB {
-			return db.Select("id", "name", "category_id")
-		}).
+		Preload("Location.Translations").Preload("Location", func(db *gorm.DB) *gorm.DB {
+		return db.Select("id", "name", "category_id")
+	}).
 		Order("created_at DESC").
 		Limit(limit).Offset(offset).
 		Find(&reviews).Error

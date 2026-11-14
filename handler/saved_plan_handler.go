@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"api/localize"
 	"api/usecase"
 	"errors"
 	"net/http"
@@ -31,6 +32,9 @@ func (h *SavedPlanHandler) List(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
+	}
+	for i := range plans {
+		localize.Location(plans[i].Location, c.Query("lang"), false)
 	}
 	c.JSON(http.StatusOK, gin.H{"data": plans})
 }

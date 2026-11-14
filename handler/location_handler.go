@@ -2,32 +2,34 @@ package handler
 
 import (
 	"api/entity"
+	"api/localize"
 	"api/usecase"
 	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 type LocationHandler struct {
 	locationUsecase usecase.LocationUsecase
+	db              *gorm.DB
 }
 
 type LocationRequest struct {
-	Name        string  `json:"name" binding:"required"`
-	Description string  `json:"description"`
-	History     string  `json:"history"`
-	ImageURL    string  `json:"image_url"`
-	Address     string  `json:"address"`
-	Latitude    float64 `json:"latitude" binding:"required"`
-	Longitude   float64 `json:"longitude" binding:"required"`
-	CategoryID  uint    `json:"category_id" binding:"required"`
+	Name         string                                `json:"name" binding:"required"`
+	Description  string                                `json:"description"`
+	History      string                                `json:"history"`
+	ImageURL     string                                `json:"image_url"`
+	Address      string                                `json:"address"`
+	Latitude     float64                               `json:"latitude" binding:"required"`
+	Longitude    float64                               `json:"longitude" binding:"required"`
+	CategoryID   uint                                  `json:"category_id" binding:"required"`
+	Translations map[string]entity.LocationTranslation `json:"translations"`
 }
 
-func NewLocationHandler(locationUsecase usecase.LocationUsecase) *LocationHandler {
-	return &LocationHandler{
-		locationUsecase: locationUsecase,
-	}
+func NewLocationHandler(locationUsecase usecase.LocationUsecase, db *gorm.DB) *LocationHandler {
+	return &LocationHandler{locationUsecase: locationUsecase, db: db}
 }
 
 func (h *LocationHandler) Create(c *gin.Context) {
@@ -43,6 +45,19 @@ func (h *LocationHandler) Create(c *gin.Context) {
 		return
 	}
 
+	translations := req.Translations
+	if translations == nil {
+		translations = map[string]entity.LocationTranslation{}
+	}
+	if _, ok := translations[localize.DefaultLanguage]; !ok {
+		translations[localize.DefaultLanguage] = entity.LocationTranslation{Name: req.Name, Description: req.Description, History: req.History, Address: req.Address}
+	}
+	if err := localize.SaveLocationTranslations(h.db, location.ID, translations); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save translations"})
+		return
+	}
+	location, _ = h.locationUsecase.GetLocation(location.ID)
+	localize.Location(location, c.Query("lang"), c.Query("include_translations") == "true")
 	c.JSON(http.StatusCreated, location)
 }
 
@@ -55,6 +70,7 @@ func (h *LocationHandler) GetByID(c *gin.Context) {
 		return
 	}
 
+	localize.Location(location, c.Query("lang"), c.Query("include_translations") == "true")
 	c.JSON(http.StatusOK, location)
 }
 
@@ -73,6 +89,19 @@ func (h *LocationHandler) Update(c *gin.Context) {
 		return
 	}
 
+	translations := req.Translations
+	if translations == nil {
+		translations = map[string]entity.LocationTranslation{}
+	}
+	if _, ok := translations[localize.DefaultLanguage]; !ok {
+		translations[localize.DefaultLanguage] = entity.LocationTranslation{Name: req.Name, Description: req.Description, History: req.History, Address: req.Address}
+	}
+	if err := localize.SaveLocationTranslations(h.db, id, translations); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save translations"})
+		return
+	}
+	location, _ = h.locationUsecase.GetLocation(id)
+	localize.Location(location, c.Query("lang"), c.Query("include_translations") == "true")
 	c.JSON(http.StatusOK, location)
 }
 
@@ -100,6 +129,9 @@ func (h *LocationHandler) GetAll(c *gin.Context) {
 		return
 	}
 
+	for i := range locations {
+		localize.Location(&locations[i], c.Query("lang"), c.Query("include_translations") == "true")
+	}
 	if locations == nil {
 		locations = make([]entity.Location, 0)
 	}
@@ -131,6 +163,9 @@ func (h *LocationHandler) GetByCategory(c *gin.Context) {
 		return
 	}
 
+	for i := range locations {
+		localize.Location(&locations[i], c.Query("lang"), c.Query("include_translations") == "true")
+	}
 	if locations == nil {
 		locations = make([]entity.Location, 0)
 	}
@@ -155,12 +190,15 @@ func (h *LocationHandler) Search(c *gin.Context) {
 	limitInt, _ := strconv.Atoi(limit)
 	offsetInt, _ := strconv.Atoi(offset)
 
-	locations, err := h.locationUsecase.SearchLocations(keyword, limitInt, offsetInt)
+	locations, err := h.locationUsecase.SearchLocations(keyword, localize.Normalize(c.Query("lang")), limitInt, offsetInt)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
+	for i := range locations {
+		localize.Location(&locations[i], c.Query("lang"), c.Query("include_translations") == "true")
+	}
 	if locations == nil {
 		locations = make([]entity.Location, 0)
 	}
@@ -206,6 +244,9 @@ func (h *LocationHandler) GetNearby(c *gin.Context) {
 		return
 	}
 
+	for i := range locations {
+		localize.Location(&locations[i], c.Query("lang"), c.Query("include_translations") == "true")
+	}
 	if locations == nil {
 		locations = make([]entity.Location, 0)
 	}

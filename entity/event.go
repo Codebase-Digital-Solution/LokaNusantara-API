@@ -12,10 +12,11 @@ type Event struct {
 	EndDate     *time.Time `gorm:"type:date" json:"end_date,omitempty"`
 	// IsEstimate marks dates that follow a lunar calendar or an organiser's
 	// decision and may shift; the app labels them as "Perkiraan".
-	IsEstimate bool      `gorm:"not null;default:false" json:"is_estimate"`
-	Region     string    `gorm:"type:varchar(100)" json:"region"`
-	LocationID *string   `gorm:"type:char(36);index" json:"location_id,omitempty"`
-	Location   *Location `gorm:"foreignKey:LocationID;constraint:OnDelete:SET NULL" json:"location,omitempty"`
+	IsEstimate   bool               `gorm:"not null;default:false" json:"is_estimate"`
+	Region       string             `gorm:"type:varchar(100)" json:"region"`
+	LocationID   *string            `gorm:"type:char(36);index" json:"location_id,omitempty"`
+	Location     *Location          `gorm:"foreignKey:LocationID;constraint:OnDelete:SET NULL" json:"location,omitempty"`
+	Translations []EventTranslation `gorm:"foreignKey:EventID;constraint:OnDelete:CASCADE" json:"translations,omitempty"`
 }
 
 func (Event) TableName() string {

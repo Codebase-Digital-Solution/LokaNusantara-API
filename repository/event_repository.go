@@ -31,7 +31,7 @@ func NewEventRepository(db *gorm.DB) EventRepository {
 func (r *eventRepository) GetBetween(from, to time.Time, limit, offset int) ([]entity.Event, error) {
 	var events []entity.Event
 	err := r.db.
-		Preload("Location.Category").
+		Preload("Translations").Preload("Location.Translations").Preload("Location.Category.Translations").
 		Where("start_date <= ? AND COALESCE(end_date, start_date) >= ?", to, from).
 		Order("start_date ASC, name ASC").
 		Limit(limit).
@@ -43,9 +43,9 @@ func (r *eventRepository) GetBetween(from, to time.Time, limit, offset int) ([]e
 func (r *eventRepository) GetAll() ([]entity.Event, error) {
 	var events []entity.Event
 	err := r.db.
-		Preload("Location", func(db *gorm.DB) *gorm.DB {
-			return db.Select("id", "name")
-		}).
+		Preload("Translations").Preload("Location.Translations").Preload("Location", func(db *gorm.DB) *gorm.DB {
+		return db.Select("id", "name")
+	}).
 		Order("start_date DESC, name ASC").
 		Find(&events).Error
 	return events, err
@@ -53,7 +53,7 @@ func (r *eventRepository) GetAll() ([]entity.Event, error) {
 
 func (r *eventRepository) GetByID(id uint) (*entity.Event, error) {
 	var event entity.Event
-	err := r.db.First(&event, id).Error
+	err := r.db.Preload("Translations").First(&event, id).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, errors.New("event not found")
 	}
