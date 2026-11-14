@@ -26,6 +26,7 @@ func (h *PlannerHandler) Plan(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "data rencana tidak valid"})
 		return
 	}
+	req.Language = c.GetHeader("Accept-Language")
 
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 85*time.Second)
 	defer cancel()

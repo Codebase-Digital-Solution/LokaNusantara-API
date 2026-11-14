@@ -35,6 +35,8 @@ type PlanRequest struct {
 	People     int    `json:"people"`
 	Days       int    `json:"days"`
 	Notes      string `json:"notes"`
+	// Language is the app language code ("en"), taken from Accept-Language.
+	Language string `json:"-"`
 }
 
 // PlanCost is one line of the estimated spending, for the whole group.
@@ -114,7 +116,7 @@ const plannerInstructions = `Kamu adalah perencana perjalanan budaya di aplikasi
 Susun rencana kunjungan yang realistis, hormat pada adat, dan sesuai budget.
 
 Aturan:
-- Tulis dalam Bahasa Indonesia yang ramah dan ringkas.
+- Tulis semua teks dengan ramah dan ringkas, dalam bahasa yang diminta di akhir instruksi ini.
 - Semua biaya dalam rupiah, bilangan bulat, untuk SELURUH rombongan (bukan per orang).
 - Biaya adalah perkiraan wajar di Bali. Jangan mengklaim harga resmi; tulis "perkiraan" di catatan bila tidak pasti. Untuk pura atau rumah ibadah, pakai "donasi/punia" dan sewa kamen bila relevan, bukan tiket, kecuali memang umum ada tiket.
 - Usahakan total biaya tidak melebihi budget. Jika budget tidak cukup, susun versi paling hemat dan jelaskan kekurangannya di budget_note.
@@ -194,7 +196,7 @@ func (u *plannerUsecase) Plan(ctx context.Context, req PlanRequest) (*TripPlan, 
 
 	prompt := buildPlanPrompt(req, target, others, events)
 	raw, err := u.ai.chat(ctx, "Planner", []openAIMessage{
-		{Role: "system", Content: plannerInstructions},
+		{Role: "system", Content: plannerInstructions + "\n- Bahasa jawaban: " + planLanguageName(req.Language) + ". Nama tempat tetap seperti di daftar; kata adat seperti kamen, canang, dan punia boleh dipakai dengan penjelasan singkat. Nilai category tetap memakai kata Indonesia dari daftar."},
 		{Role: "user", Content: prompt},
 	}, 0.4, "trip_plan", planSchema)
 	if err != nil {
@@ -307,4 +309,25 @@ func buildPlanPrompt(req PlanRequest, target *entity.Location, others []entity.L
 		b.WriteString("\n")
 	}
 	return b.String()
+}
+
+// planLanguageName maps an Accept-Language value to the language the plan
+// is written in. Unknown or missing values fall back to Indonesian.
+func planLanguageName(acceptLanguage string) string {
+	code := strings.ToLower(strings.TrimSpace(acceptLanguage))
+	if i := strings.IndexAny(code, "-_,;"); i >= 0 {
+		code = code[:i]
+	}
+	switch code {
+	case "en":
+		return "English"
+	case "ko":
+		return "Korean (한국어)"
+	case "ja":
+		return "Japanese (日本語)"
+	case "zh":
+		return "Simplified Chinese (简体中文)"
+	default:
+		return "Bahasa Indonesia"
+	}
 }

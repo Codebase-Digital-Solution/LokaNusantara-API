@@ -57,3 +57,21 @@ func TestBuildPlanPromptMentionsOnlyTargetEvents(t *testing.T) {
 		t.Error("prompt includes an event from another place")
 	}
 }
+
+func TestPlanLanguageName(t *testing.T) {
+	cases := map[string]string{
+		"":               "Bahasa Indonesia",
+		"id":             "Bahasa Indonesia",
+		"en":             "English",
+		"en-US,en;q=0.9": "English",
+		"ko":             "Korean (한국어)",
+		"ja_JP":          "Japanese (日本語)",
+		"zh":             "Simplified Chinese (简体中文)",
+		"fr":             "Bahasa Indonesia",
+	}
+	for in, want := range cases {
+		if got := planLanguageName(in); got != want {
+			t.Errorf("planLanguageName(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
