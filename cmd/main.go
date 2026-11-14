@@ -34,10 +34,6 @@ func main() {
 
 	log.Println("✓ Migrations completed successfully")
 
-	if err := db.SeedAdmin(database, cfg.AdminName, cfg.AdminEmail, cfg.AdminPassword); err != nil {
-		log.Fatalf("Failed to seed admin: %v", err)
-	}
-
 	// Setup router
 	gin := router.SetupRouter(database, cfg)
 

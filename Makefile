@@ -1,4 +1,4 @@
-.PHONY: help build run test clean docker-up docker-down deps fmt lint migrate pm2-start pm2-restart pm2-stop pm2-logs pm2-status pm2-delete
+.PHONY: help build run test clean docker-up docker-down deps fmt lint migrate seed pm2-start pm2-restart pm2-stop pm2-logs pm2-status pm2-delete
 
 help:
 	@echo "Bali Guide Map API - Makefile Commands"
@@ -12,7 +12,8 @@ help:
 	@echo "make lint            - Run linter"
 	@echo "make docker-up       - Start Docker services"
 	@echo "make docker-down     - Stop Docker services"
-	@echo "make migrate         - Run database migrations"
+	@echo "make migrate         - Run database migrations without starting the API"
+	@echo "make seed            - Insert starter data and create/promote the admin user"
 	@echo "make pm2-start       - Build and run the API under PM2"
 	@echo "make pm2-restart     - Rebuild and restart the API under PM2"
 	@echo "make pm2-stop        - Stop the API under PM2"
@@ -61,8 +62,12 @@ docker-down:
 	@docker-compose down
 
 migrate:
-	@echo "Running migrations..."
-	@go run cmd/main.go
+	@echo "Running database migrations..."
+	@go run ./cmd/migrate
+
+seed:
+	@echo "Seeding starter data and admin user..."
+	@go run ./cmd/seed
 
 # --- PM2 -------------------------------------------------------------------
 # Requires PM2: npm install -g pm2

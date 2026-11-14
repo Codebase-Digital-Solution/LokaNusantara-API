@@ -53,16 +53,26 @@ func RunMigrations(db *gorm.DB) error {
 		return err
 	}
 
-	// Seed initial data if not exist
+	// Language rows are reference data required by translation foreign keys.
+	// Content/demo seeders are intentionally not run during API startup.
+	if err := backfillDefaultTranslations(db); err != nil {
+		return fmt.Errorf("failed to backfill Indonesian translations: %w", err)
+	}
+
+	return nil
+}
+
+// SeedInitialData inserts the optional starter content. It is called by the
+// dedicated seed command, never by normal API startup.
+func SeedInitialData(db *gorm.DB) error {
 	seedCategories(db)
 	seedCategoryOrder(db)
 	SeedLocations(db)
 	SeedEvents(db)
 	SeedTrails(db)
 	if err := backfillDefaultTranslations(db); err != nil {
-		return fmt.Errorf("failed to backfill Indonesian translations: %w", err)
+		return fmt.Errorf("failed to backfill Indonesian translations for seeded content: %w", err)
 	}
-
 	return nil
 }
 

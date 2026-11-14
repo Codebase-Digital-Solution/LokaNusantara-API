@@ -159,13 +159,27 @@ Make sure MySQL is running and the database credentials in `.env` are correct.
 go mod download
 ```
 
-### 5. Run the Application
+### 5. Optional: Seed Starter Data
+
+API startup applies schema migrations but does not insert sample content or create an admin account. Run the dedicated seeder when you want the starter categories, locations, events, trails, and admin account:
 
 ```bash
-go run cmd/main.go
+make seed
 ```
 
-The server will start on `http://localhost:8080`
+`make seed` also prepares the database schema, so it can be run before starting the API. To apply schema migrations without seeding content or starting the server, run:
+
+```bash
+make migrate
+```
+
+### 6. Run the Application
+
+```bash
+make run
+```
+
+The server will start on `http://localhost:8080`. Normal startup runs schema migrations and Indonesian translation backfill only; it does not run the sample data seeder.
 
 ### 6. Verify Setup
 
@@ -418,13 +432,17 @@ DELETE /api/v1/reviews/:id
 Authorization: Bearer {token}
 ```
 
-## Predefined Categories
+## Starter Categories
 
-The following categories are seeded automatically:
+The optional `make seed` command creates the starter categories used by the sample locations:
 
-1. **wisata** (Tourism)
-2. **health** (Health Services)
-3. **hotel** (Accommodation)
+1. `tradisi`
+2. `pura`
+3. `masjid`
+4. `gereja`
+5. `vihara`
+6. `klenteng`
+7. `kuliner`
 
 ## Architecture Overview
 
